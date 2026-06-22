@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Amazon Authorization Callback | Xingmeng</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #e4e7ec;
+      --surface: #ffffff;
+      --page: #f7f8fa;
+      --success: #067647;
+      --success-bg: #ecfdf3;
+      --error: #b42318;
+      --error-bg: #fef3f2;
+      --warning: #b54708;
+      --warning-bg: #fffaeb;
+      --accent: #ff9900;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 48px 20px;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      background: var(--page);
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(720px, 100%);
+      padding: 36px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: 0 12px 40px rgba(16, 24, 40, 0.08);
+    }
+
+    .brand {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 5vw, 38px);
+      line-height: 1.2;
+    }
+
+    .summary {
+      margin: 0 0 28px;
+      color: var(--muted);
+    }
+
+    .status {
+      display: none;
+      margin-bottom: 24px;
+      padding: 16px 18px;
+      border-radius: 10px;
+    }
+
+    .status.active { display: block; }
+    .status strong { display: block; margin-bottom: 4px; }
+    [data-state="success"] { color: var(--success); background: var(--success-bg); }
+    [data-state="error"] { color: var(--error); background: var(--error-bg); }
+    [data-state="incomplete"] { color: var(--warning); background: var(--warning-bg); }
+
+    .details {
+      display: grid;
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    code, .value {
+      display: block;
+      width: 100%;
+      overflow-wrap: anywhere;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: #344054;
+      background: #f9fafb;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    button {
+      min-height: 44px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 8px;
+      color: #111827;
+      background: var(--accent);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    button:hover { filter: brightness(0.96); }
+    button:focus-visible { outline: 3px solid rgba(255, 153, 0, 0.35); }
+
+    .next-step {
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+
+    .next-step h2 {
+      margin: 0 0 10px;
+      font-size: 19px;
+    }
+
+    .privacy {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 20px 12px; }
+      main { padding: 26px 20px; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="brand">Xingmeng · Amazon Ads</p>
+    <h1 id="page-title">正在处理 Amazon 授权结果</h1>
+    <p class="summary" id="page-summary">请稍候，页面正在检查回调参数。</p>
+
+    <section class="status" data-state="success" aria-live="polite">
+      <strong>授权成功</strong>
+      Amazon 已返回授权码。请复制完整回调 URL，并在本地完成令牌交换。
+    </section>
+
+    <section class="status" data-state="error" aria-live="polite">
+      <strong>授权未完成</strong>
+      <span id="error-message">Amazon 返回了授权错误。</span>
+    </section>
+
+    <section class="status" data-state="incomplete" aria-live="polite">
+      <strong>回调参数不完整</strong>
+      当前地址中没有有效的授权码。请从授权链接重新开始。
+    </section>
+
+    <section class="details" id="oauth-details" hidden>
+      <div class="field">
+        <label for="authorization-code">Authorization code</label>
+        <div class="value" id="authorization-code"></div>
+      </div>
+      <div class="field">
+        <label for="oauth-state">State</label>
+        <div class="value" id="oauth-state"></div>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button type="button" id="copy-url">复制完整回调 URL</button>
+    </div>
+
+    <section class="next-step">
+      <h2>下一步</h2>
+      <p>在保存 Python 工具的电脑上运行：</p>
+      <code id="cli-command">python -m amazon_ads exchange-code --callback-url "完整回调URL"</code>
+      <p class="privacy">
+        本页面不会上传、保存或记录授权码。所有参数仅在当前浏览器页面中显示。
+      </p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const state = params.get("state");
+      const error = params.get("error");
+      const errorDescription = params.get("error_description");
+      const title = document.getElementById("page-title");
+      const summary = document.getElementById("page-summary");
+      const details = document.getElementById("oauth-details");
+      const command = document.getElementById("cli-command");
+
+      const showState = (name) => {
+        document.querySelector(`[data-state="${name}"]`).classList.add("active");
+      };
+
+      if (error) {
+        title.textContent = "Amazon 授权未完成";
+        summary.textContent = "请检查下方错误信息后重新发起授权。";
+        document.getElementById("error-message").textContent =
+          errorDescription || error;
+        showState("error");
+      } else if (code && state) {
+        title.textContent = "Amazon 授权成功";
+        summary.textContent = "回调参数已收到，请在本地完成最后一步。";
+        document.getElementById("authorization-code").textContent = code;
+        document.getElementById("oauth-state").textContent = state;
+        details.hidden = false;
+        command.textContent =
+          `python -m amazon_ads exchange-code --callback-url "${window.location.href}"`;
+        showState("success");
+      } else {
+        title.textContent = "未检测到有效授权结果";
+        summary.textContent = "当前页面可以作为 Amazon OAuth 的 Return URL。";
+        showState("incomplete");
+      }
+
+      document.getElementById("copy-url").addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          button.textContent = "已复制";
+        } catch {
+          button.textContent = "复制失败，请复制地址栏";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
